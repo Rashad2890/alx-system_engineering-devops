@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
-#INstall NGINX and configue the default html page
+#ngnix script to install the web server
 
-sudo apt-get update -y
-sudo apt-get install nginx -y
-sudo service nginx start
-sudo chmod 644 /var/www/html/index.nginx-debian.html
-echo "Hello World!" > /var/www/html/index.nginx-debian.html
+sudo apt-get update
+sudo apt-get install -y nginx
+sudo sh -c 'echo "Hello World!"> /var/www/html/index.html'
 sudo service nginx restart
 
