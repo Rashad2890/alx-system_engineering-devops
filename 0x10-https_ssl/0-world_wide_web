@@ -1,16 +1,14 @@
 #!/usr/bin/env bash
-# displays information about subdomains
-display_dns_infor() {
+# script to config domain zone to point to load balancer
+# add more subdomains and display info about them
 
-	dig $2.$1 | awk 'c&&!--c;/;; ANSWER SECTION:/{c=1}' | awk -v subdomain=$2 '{print "The subdomain " subdomain " is a " $4 " record and points to " $5 }'
-	return 0
-}
-subdomains=("www" "lb-01" "web-01" "web-02")
-
-for subdomain in "${subdomains[@]}"
-do
-	if [ -z "$2" ] || [ "$2" == "$subdomain" ] ;
-	then
-		display_dns_infor "$1" "$subdomain"
-	fi
+domain=$1
+if [ "$#" -eq 2 ]; then
+   sub=$2
+else
+	sub=("www" "lb-01" "web-01" "web-02")
+fi
+for subdomain in "${sub[@]}"; do
+    echo -n "The subdomain $subdomain"
+    dig "$subdomain.$domain" | grep -A1 'ANSWER SECTION:' | tail -n -1 | awk '{ print " is a " $4 " record and points to " $5}'
 done
