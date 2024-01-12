@@ -1,35 +1,36 @@
 #!/usr/bin/env bash
-# Displays informtation about subdomains.
+#information abd the domain and subdomain
 
-# uncomment for debugging purposes.
-#set -x
+url=""
+domain=$1
+sub=$2
+url+="$sub"
+url+="."
+url+="$domain"
+type=""
 
-# for the checker to work please remove the colors.
+#ipp=`dig $domain | awk "NR==14{ print }" | cut -f5 -d$'\t'`
 
-# colors
-blue='\e[1;34m'
-brown='\e[0;33m'
-reset='\033[0m'
-
-# variables & parameters
-subdomains=( "www" "lb-01" "web-01" "web-02" )
-domain="$1"
-sub="$2"
-
-dig_cmd () {
-	# func variables
-	sub="$2"
-	INFO="$(dig "$sub.$domain" | grep -A1 'ANSWER SECTION:' | awk 'NR==2')"
-	IP=$(echo "$INFO" | awk '{print $5}')
-	RECORD=$(echo "$INFO" | awk '{print $4}')
-
-	echo -e "${brown}The subdomain ${blue}$sub${brown} is a ${blue}$RECORD${brown} record and points to ${blue}$IP${reset}"
+run()
+{  
+    ipp=`dig www.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f5 -d$'\t'`
+    type=`dig www.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f4 -d$'\t'`
+    echo "The subdomain www is a $type record and points to $ipp"
+    ipp=`dig lb-01.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f5 -d$'\t'`
+    type=`dig lb-01.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f4 -d$'\t'`
+    echo "The subdomain lb-01 is a $type record and points to $ipp"
+    ipp=`dig web-01.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f4 -d$'\t'`
+    type=`dig web-02.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f3 -d$'\t'`
+    echo "The subdomain web-01 is a $type record and points to $ipp"
+    ipp=`dig web-02.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f4 -d$'\t'`
+    type=`dig web-02.$domain | grep -A1 'ANSWER SECTION:' | awk "NR==2{ print }" | cut -f3 -d$'\t'`
+    echo "The subdomain web-02 is a $type record and points to $ipp"
+    #echo "$ipp"
 }
-
-if [ $# -eq 1 ]; then
-	for subs in "${subdomains[@]}"; do
-		dig_cmd "$domain" "$subs"
-	done
-elif [ $# -eq 2 ]; then
-	dig_cmd "$domain" "$sub"
+if [ $# -lt 2 ]; then
+    run
+else
+    type=`dig $url | awk "NR==14{ print }" | cut -f4 -d$'\t'`
+    ip=`dig $url | awk "NR==14{ print }" | cut -f5 -d$'\t'`
+    echo "The subdomain $sub is a $type record and points to $ip"
 fi
