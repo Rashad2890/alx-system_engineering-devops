@@ -1,30 +1,39 @@
 #!/usr/bin/python3
+"""script for parsing web data from an api
 """
-recursive function that queries the Reddit API
-and returns a list containing the titles of all
-hot articles for a given subreddit.
-"""
-
+import json
 import requests
+import sys
 
 
-def recurse(subreddit, hot_list=[], after_party=None):
-    header = {'User-Agent': 'fake'}
-    param = {'after': after_party}
-    r = requests.get('http://www.reddit.com/r/{}/hot.json?after={}'
-                     .format(subreddit, after_party),
-                     headers=header)
-    status = r.status_code
-    if status == requests.codes.ok:
-        x = r.json().get('data').get('children')
-        after_party = r.json().get('data').get('after')
-        for page in x:
-            hot_list.append(page.get('data').get('title'))
-        if len(hot_list) == 0:
-            return None
-        if after_party is None:
-            return hot_list
-        return recurse(subreddit, hot_list, after_party)
+def recurse(subreddit, hot_list=[]):
+    """api call to reddit to get the number of subscribers
+    """
+    base_url = 'https://www.reddit.com/r/{}/top.json'.format(
+        subreddit
+    )
+    headers = {
+        'User-Agent':
+        'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) \
+        Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)'
+    }
+    if len(hot_list) == 0:
+        # grab info about all users
+        url = base_url
     else:
+        url = base_url + '?after={}_{}'.format(
+            hot_list[-1].get('kind'),
+            hot_list[-1].get('data').get('id')
+        )
+    response = requests.get(url, headers=headers)
+    resp = json.loads(response.text)
+    try:
+        # grab the info about the users' tasks
+        data = resp.get('data')
+        children = data.get('children')
+    except:
         return None
-
+    if children is None or data is None or len(children) < 1:
+        return hot_list
+    hot_list.extend(children)
+    return recurse(subreddit, hot_list)
