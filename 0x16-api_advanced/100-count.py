@@ -1,90 +1,95 @@
 #!/usr/bin/python3
-"""script for parsing web data from an api
-    DISCLAIMER: THIS PROBABLY SHOULDN'T BE DONE RECURSIVELY
-    but we had to for school :P
+""" querry reddit api for subreddit info
 """
-import json
 import requests
-import sys
+import requests.auth
+import string
+from time import sleep
 
 
-def get_hot_posts(subreddit, hot_list=[]):
-    """api call to reddit to get the number of subscribers
+def authenticate():
+    """ authenticate function
+    doesnt take parameters returns token_type and access_token
     """
-    base_url = 'https://www.reddit.com/r/{}/top.json'.format(
-        subreddit
-    )
-    headers = {
-        'User-Agent':
-        'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) \
-        Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)'
-    }
-    if len(hot_list) == 0:
-        # grab initial list
-        url = base_url
+    usr_name = "jgadelugo"
+    temp = "HolbertonPass845"
+
+    secret = "Z4Sa9bA6RRE44qDyhHQiTlW1gd0"
+    client_id = "hy4KvoK0W2iDvw"
+
+    client_auth = requests.auth.HTTPBasicAuth(client_id, secret)
+    post_data = {"grant_type": "password",
+                 "username": usr_name,
+                 "password": temp}
+
+    headers = {"User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
+    response = requests.post("https://www.reddit.com/api/v1/access_token",
+                             auth=client_auth, data=post_data, headers=headers)
+    auth_json = response.json()
+
+    token_type = auth_json['token_type']
+    access_token = auth_json['access_token']
+
+    return (token_type, access_token)
+
+
+def recurse(subreddit, hot_list=[], after=[], t_type=None, a_token=None):
+    """ querry reddit api for hot post
+    recursively get all hot post from subreddit
+    """
+    sub = subreddit
+    subreddit = "/r/{}/hot".format(sub)
+    usr_name = "jgadelugo"
+
+    if len(after) == 0:
+        t_type, a_token = authenticate()
+
+    headers = {"Authorization": "{} {}".format(t_type, a_token),
+               "User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
+    if len(after) != 0:
+        param = {"limit": 100, "after": after[-1]}
     else:
-        # grab next pagination after last obj in hot_list
-        url = base_url + '?after={}_{}'.format(
-            hot_list[-1].get('kind'),
-            hot_list[-1].get('data').get('id')
-        )
-    response = requests.get(url, headers=headers)
-    resp = json.loads(response.text)
-    try:
-        data = resp.get('data')
-        children = data.get('children')
-    except:
+        param = {"limit": 100}
+
+    sleep(1)
+    query = "https://oauth.reddit.com{}".format(subreddit)
+    res = requests.get(query, headers=headers, params=param)
+
+    status = res.status_code
+
+    if (status != 200):
         return None
-    if children is None or data is None or len(children) < 1:
-        return hot_list
-    hot_list.extend(children)
-    return get_hot_posts(subreddit, hot_list)
+    else:
+        data = res.json()
+        if data['data']['after'] in after:
+            return hot_list
+        after.append(data['data']['after'])
+        posts = data["data"]['children']
+        for post in posts:
+            hot_list.append(post['data']['title'])
+
+        return recurse(sub, hot_list, after, t_type, a_token)
 
 
-def count_words(subreddit, wordlist):
-    """count words in titles of hot posts for subreddit
-    """
-    posts = get_hot_posts(subreddit)
-    if posts is None:
-        print(end="")
+def count_words(subreddit, word_list):
+    """ count words """
+    flag = 0
+    words = {}
+    for word in word_list:
+        words[word] = 0
+    hot_list = recurse(subreddit)
+    if hot_list is None:
         return
-    words = gather_word_info(posts, wordlist)
-    sorted_list = [(key, val) for key, val in words.items()]
-    sorted_list = sorted(sorted_list, key=lambda tup: tup[1], reverse=True)
-    [print("{}: {}".format(key, val)) for (key, val) in sorted_list if val > 0]
-
-
-def gather_word_info(hot_posts, wordlist,
-                     posts_len=None,
-                     counter=0,
-                     words_info=None):
-    """does the recursion to grab word info from wordlist and posts
-    """
-    if hot_posts is None:
-        return
-    # generate defaults
-    if posts_len is None:
-        posts_len = len(hot_posts)
-    if words_info is None:
-        words_info = {key: 0 for key in wordlist}
-    # base case
-    if counter == posts_len - 1:
-        return words_info
-
-    # parse this title and move to next
-    data = hot_posts[counter].get('data')
-    if data is None:
-        return words_info
-    title = data.get('title')
-    if title is None:
-        return words_info
-    # im sorry im not doing recursion for text parsing that's rediculous
-    for word in title.split(' '):
-        word = word.lower()
-        if word in wordlist:
-            words_info[word] += 1
-    counter += 1
-    return gather_word_info(
-        hot_posts, wordlist, posts_len,
-        counter, words_info
-    )
+    for hot in hot_list:
+        hot.translate(str.maketrans('', '', string.punctuation))
+        for h in hot.lower().split():
+            for word in word_list:
+                if h.lower() == word.lower():
+                    words[word] += 1
+    sorted_words = sorted(words.items(), key=lambda x: (-x[1], x[0]))
+    for key, value in sorted_words:
+        if value != 0:
+            print("{}: {}".format(key, value))
+            flag = 1
+    if flag == 0:
+        print()
