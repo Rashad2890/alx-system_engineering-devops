@@ -1,95 +1,72 @@
 #!/usr/bin/python3
-""" querry reddit api for subreddit info
 """
+Function that queries the Reddit API and prints
+the top ten hot posts of a subreddit
+"""
+import re
 import requests
-import requests.auth
-import string
-from time import sleep
+import sys
 
 
-def authenticate():
-    """ authenticate function
-    doesnt take parameters returns token_type and access_token
-    """
-    usr_name = "jgadelugo"
-    temp = "HolbertonPass845"
+def add_title(dictionary, hot_posts):
+    """ Adds item into a list """
+    if len(hot_posts) == 0:
+        return
 
-    secret = "Z4Sa9bA6RRE44qDyhHQiTlW1gd0"
-    client_id = "hy4KvoK0W2iDvw"
-
-    client_auth = requests.auth.HTTPBasicAuth(client_id, secret)
-    post_data = {"grant_type": "password",
-                 "username": usr_name,
-                 "password": temp}
-
-    headers = {"User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
-    response = requests.post("https://www.reddit.com/api/v1/access_token",
-                             auth=client_auth, data=post_data, headers=headers)
-    auth_json = response.json()
-
-    token_type = auth_json['token_type']
-    access_token = auth_json['access_token']
-
-    return (token_type, access_token)
+    title = hot_posts[0]['data']['title'].split()
+    for word in title:
+        for key in dictionary.keys():
+            c = re.compile("^{}$".format(key), re.I)
+            if c.findall(word):
+                dictionary[key] += 1
+    hot_posts.pop(0)
+    add_title(dictionary, hot_posts)
 
 
-def recurse(subreddit, hot_list=[], after=[], t_type=None, a_token=None):
-    """ querry reddit api for hot post
-    recursively get all hot post from subreddit
-    """
-    sub = subreddit
-    subreddit = "/r/{}/hot".format(sub)
-    usr_name = "jgadelugo"
+def recurse(subreddit, dictionary, after=None):
+    """ Queries to Reddit API """
+    u_agent = 'Mozilla/5.0'
+    headers = {
+        'User-Agent': u_agent
+    }
 
-    if len(after) == 0:
-        t_type, a_token = authenticate()
+    params = {
+        'after': after
+    }
 
-    headers = {"Authorization": "{} {}".format(t_type, a_token),
-               "User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
-    if len(after) != 0:
-        param = {"limit": 100, "after": after[-1]}
-    else:
-        param = {"limit": 100}
+    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
+    res = requests.get(url,
+                       headers=headers,
+                       params=params,
+                       allow_redirects=False)
 
-    sleep(1)
-    query = "https://oauth.reddit.com{}".format(subreddit)
-    res = requests.get(query, headers=headers, params=param)
-
-    status = res.status_code
-
-    if (status != 200):
+    if res.status_code != 200:
         return None
-    else:
-        data = res.json()
-        if data['data']['after'] in after:
-            return hot_list
-        after.append(data['data']['after'])
-        posts = data["data"]['children']
-        for post in posts:
-            hot_list.append(post['data']['title'])
 
-        return recurse(sub, hot_list, after, t_type, a_token)
+    dic = res.json()
+    hot_posts = dic['data']['children']
+    add_title(dictionary, hot_posts)
+    after = dic['data']['after']
+    if not after:
+        return
+    recurse(subreddit, dictionary, after=after)
 
 
 def count_words(subreddit, word_list):
-    """ count words """
-    flag = 0
-    words = {}
+    """ Init function """
+    dictionary = {}
+
     for word in word_list:
-        words[word] = 0
-    hot_list = recurse(subreddit)
-    if hot_list is None:
-        return
-    for hot in hot_list:
-        hot.translate(str.maketrans('', '', string.punctuation))
-        for h in hot.lower().split():
-            for word in word_list:
-                if h.lower() == word.lower():
-                    words[word] += 1
-    sorted_words = sorted(words.items(), key=lambda x: (-x[1], x[0]))
-    for key, value in sorted_words:
-        if value != 0:
-            print("{}: {}".format(key, value))
-            flag = 1
-    if flag == 0:
-        print()
+        dictionary[word] = 0
+
+    recurse(subreddit, dictionary)
+
+    l = sorted(dictionary.items(), key=lambda kv: kv[1])
+    l.reverse()
+
+    if len(l) != 0:
+        for item in l:
+            if item[1] is not 0:
+                print("{}: {}".format(item[0], item[1]))
+    else:
+        print("")

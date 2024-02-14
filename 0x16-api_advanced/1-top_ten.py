@@ -1,46 +1,36 @@
 #!/usr/bin/python3
-""" querry reddit api for subreddit info"""
+"""
+Function that queries the Reddit API and prints
+the top ten hot posts of a subreddit
+"""
 import requests
-import requests.auth
+import sys
 
 
 def top_ten(subreddit):
-    """ querry reddit api"""
-    sub = subreddit
-    subreddit = "/r/{}/hot".format(sub)
-    temp = "HolbertonPass845"
+    """ Queries to Reddit API """
+    u_agent = 'Mozilla/5.0'
 
-    secret = "Z4Sa9bA6RRE44qDyhHQiTlW1gd0"
-    client_id = "hy4KvoK0W2iDvw"
-    usr_name = "jgadelugo"
+    headers = {
+        'User-Agent': u_agent
+    }
 
-    client_auth = requests.auth.HTTPBasicAuth(client_id, secret)
-    post_data = {"grant_type": "password",
-                 "username": usr_name,
-                 "password": temp}
+    params = {
+        'limit': 10
+    }
 
-    headers = {"User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
-    response = requests.post("https://www.reddit.com/api/v1/access_token",
-                             auth=client_auth, data=post_data, headers=headers)
-    auth_json = response.json()
-
-    token_type = auth_json['token_type']
-    access_token = auth_json['access_token']
-
-    headers = {"Authorization": "{} {}".format(token_type, access_token),
-               "User-Agent": "ChangeMeClient/0.1 by {}".format(usr_name)}
-
-    param = {"limit": 10}
-
-    query = "https://oauth.reddit.com{}".format(subreddit)
-    res = requests.get(query, headers=headers, params=param)
-
-    status = res.status_code
-
-    if (status != 200):
-        print("None")
+    url = "https://www.reddit.com/r/{}/hot.json".format(subreddit)
+    res = requests.get(url,
+                       headers=headers,
+                       params=params,
+                       allow_redirects=False)
+    if res.status_code != 200:
+        print(None)
+        return
+    dic = res.json()
+    hot_posts = dic['data']['children']
+    if len(hot_posts) is 0:
+        print(None)
     else:
-        data = res.json()
-        posts = data["data"]['children']
-        for post in posts:
+        for post in hot_posts:
             print(post['data']['title'])
