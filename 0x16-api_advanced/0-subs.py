@@ -1,20 +1,31 @@
 #!/usr/bin/python3
+"""script for parsing web data from an api
 """
-Write a function that queries the Reddit API and returns the number of
-subscribers (not active users, total subscribers) for a given subreddit. If an
-invalid subreddit is given, the function should return 0.
-"""
+import json
+import requests
+import sys
 
 
 def number_of_subscribers(subreddit):
-    """ does what is stated above """
-    import requests
+    """api call to reddit to get the number of subscribers
+    """
+    base_url = 'https://www.reddit.com/r/'
+    headers = {
+        'User-Agent':
+        'Mozilla/5.0 (Windows; U; Windows NT 5.1; de; rv:1.9.2.3) \
+        Gecko/20100401 Firefox/3.6.3 (FM Scene 4.6.1)'
+    }
+    # grab info about all users
+    url = base_url + '{}/about.json'.format(subreddit)
+    response = requests.get(url, headers=headers)
+    resp = json.loads(response.text)
 
-    url = 'https://www.reddit.com/r/{}/about.json'.format(subreddit)
-    request = requests.get(url,
-                           headers={'User-Agent': 'Byn'},
-                           allow_redirects=False)
-    if request.status_code != 200:
+    try:
+        # grab the info about the users' tasks
+        data = resp.get('data')
+        subscribers = data.get('subscribers')
+    except:
         return 0
-    request = request.json()
-    return request.get('data').get('subscribers')
+    if subscribers is None:
+        return 0
+    return int(subscribers)
