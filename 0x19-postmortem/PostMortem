@@ -1,3 +1,4 @@
+google docs link : https://docs.google.com/document/d/117OiR4rnV86UcJxz6fqyujgPAvUTD8BsQctpKpob_Gk/edit?usp=sharing
 Issue Summary:
 At 00:00 i got reported that our Apache server is down, and all requests to the infrastructure resources resulted in internal error 500 . API services that are also deployed on this server return the same error response .
 
